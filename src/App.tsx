@@ -13,6 +13,9 @@ import Stretch from '@/pages/Stretch'
 import Breathing from '@/pages/Breathing'
 import Bubbles from '@/pages/Bubbles'
 import Motivation from '@/pages/Motivation'
+import Vocabulary from '@/pages/Vocabulary'
+import DevBytes from '@/pages/DevBytes'
+import DiffChecker from '@/pages/DiffChecker'
 import Appointments from '@/pages/Appointments'
 import Insights from '@/pages/Insights'
 import SettingsPage from '@/pages/Settings'
@@ -34,6 +37,9 @@ export default function App() {
           <Route path="/breathing" element={<Breathing />} />
           <Route path="/bubbles" element={<Bubbles />} />
           <Route path="/motivation" element={<Motivation />} />
+          <Route path="/vocabulary" element={<Vocabulary />} />
+          <Route path="/dev-bytes" element={<DevBytes />} />
+          <Route path="/diff" element={<DiffChecker />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<SettingsPage />} />

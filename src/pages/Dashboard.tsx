@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Droplets, Timer, ArrowRight, CalendarClock, Quote as QuoteIcon, Plus, GlassWater, RefreshCw } from 'lucide-react'
+import { Droplets, Timer, ArrowRight, CalendarClock, Quote as QuoteIcon, Plus, GlassWater, RefreshCw, BookOpen, Volume2, Lightbulb, Sparkles, Laugh, Eye, Heart, Mic, MicOff } from 'lucide-react'
 import { Card, CardContent, Progress, Button, Input } from '@/components/ui/primitives'
 import { PomodoroPanel } from '@/components/PomodoroPanel'
 import { useStats } from '@/hooks/useStats'
@@ -11,6 +11,9 @@ import { useWater } from '@/store/water'
 import { useToast } from '@/components/ui/toast'
 import { useDailyQuote } from '@/hooks/useDailyQuote'
 import { fetchRandomQuote, type ApiQuote } from '@/lib/quotes'
+import { fetchRandomWord, getDailyWord, type WordEntry } from '@/lib/dictionary'
+import { getDailyDose, fetchDose, type Dose, type DoseKind } from '@/lib/dose'
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import type { Appointment } from '@/lib/types'
 import { isTaskDone, isToday } from '@/lib/tasks'
 import { dayKey, pct, cn } from '@/lib/utils'
@@ -115,8 +118,171 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 3: Word of the day */}
+      <WordOfDayTile />
+
+      {/* Row 4: Daily dose — affirmation, advice, fact, joke */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <DoseCard kind="affirmation" />
+        <DoseCard kind="advice" />
+        <DoseCard kind="fact" />
+        <DoseCard kind="joke" />
+      </div>
     </div>
   )
+}
+
+const DOSE_META: Record<DoseKind, { title: string; icon: typeof Lightbulb; accent: string; iconWrap: string }> = {
+  affirmation: { title: 'Affirmation', icon: Heart, accent: 'from-primary/10', iconWrap: 'bg-primary/15 text-primary' },
+  advice: { title: 'Advice', icon: Lightbulb, accent: 'from-warning/10', iconWrap: 'bg-warning/15 text-warning' },
+  fact: { title: 'Did you know?', icon: Sparkles, accent: 'from-[hsl(199_89%_55%)]/10', iconWrap: 'bg-[hsl(199_89%_55%)]/15 text-[hsl(199_89%_55%)]' },
+  joke: { title: 'Joke', icon: Laugh, accent: 'from-success/10', iconWrap: 'bg-success/15 text-success' },
+}
+
+function DoseCard({ kind }: { kind: DoseKind }) {
+  const meta = DOSE_META[kind]
+  const Icon = meta.icon
+  const [dose, setDose] = useState<Dose | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [revealed, setRevealed] = useState(false)
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    getDailyDose(kind, ctrl.signal)
+      .then((d) => { setDose(d); setLoading(false) })
+      .catch(() => setLoading(false))
+    return () => ctrl.abort()
+  }, [kind])
+
+  const refresh = async () => {
+    setLoading(true)
+    setRevealed(false)
+    try { setDose(await fetchDose(kind)) } catch { /* keep current */ }
+    setLoading(false)
+  }
+
+  return (
+    <Card className={cn('flex h-full flex-col overflow-hidden bg-gradient-to-br via-card to-card', meta.accent)}>
+      <CardContent className="flex flex-1 flex-col p-5">
+        <div className="flex items-center gap-2">
+          <span className={cn('grid h-7 w-7 place-items-center rounded-lg', meta.iconWrap)}>
+            <Icon className="h-4 w-4" />
+          </span>
+          <h3 className="font-semibold">{meta.title}</h3>
+        </div>
+
+        <div className="mt-4 min-h-[72px] flex-1">
+          {dose ? (
+            <>
+              <p className="text-sm font-medium leading-snug text-balance">{dose.text}</p>
+              {dose.punchline && (
+                revealed ? (
+                  <p className="mt-2.5 text-sm font-semibold leading-snug text-success">{dose.punchline}</p>
+                ) : (
+                  <Button variant="outline" size="sm" className="mt-2.5" onClick={() => setRevealed(true)}>
+                    <Eye className="h-3.5 w-3.5" /> Reveal punchline
+                  </Button>
+                )
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{loading ? 'Loading…' : 'Couldn’t load.'}</p>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} /> New
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function WordOfDayTile() {
+  const [entry, setEntry] = useState<WordEntry | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    let cancelled = false
+    getDailyWord(ctrl.signal)
+      .then((w) => { if (!cancelled) { setEntry(w); setLoading(false) } })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true; ctrl.abort() }
+  }, [])
+
+  const newWord = async () => {
+    setLoading(true)
+    try { setEntry(await fetchRandomWord()) } catch { /* keep current */ }
+    setLoading(false)
+  }
+
+  const speak = () => {
+    if (!entry) return
+    if (entry.audio) new Audio(entry.audio).play().catch(() => synth(entry.word))
+    else synth(entry.word)
+  }
+
+  return (
+    <Card className="overflow-hidden bg-gradient-to-br from-primary/5 via-card to-card">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary/15 text-primary">
+              <BookOpen className="h-4 w-4" />
+            </span>
+            <h3 className="font-semibold">Word of the day</h3>
+          </div>
+          <Link to="/vocabulary" className="flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">
+            More <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {entry ? (
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                <span className="text-2xl font-bold tracking-tight">{entry.word}</span>
+                {entry.phonetic && <span className="font-mono text-sm text-muted-foreground">{entry.phonetic}</span>}
+                {entry.meanings[0] && <span className="text-xs italic text-muted-foreground">{entry.meanings[0].partOfSpeech}</span>}
+                <button
+                  onClick={speak}
+                  className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25 focus-ring"
+                  aria-label="Play pronunciation"
+                >
+                  <Volume2 className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-2 text-sm leading-snug text-muted-foreground">{entry.summary}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={newWord} disabled={loading}>
+              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} /> New word
+            </Button>
+          </div>
+        ) : loading ? (
+          <p className="mt-4 text-sm text-muted-foreground">Loading today’s word…</p>
+        ) : (
+          <div className="mt-4 flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">Couldn’t load a word.</p>
+            <Button size="sm" variant="outline" onClick={newWord}>
+              <RefreshCw className="h-3.5 w-3.5" /> Try again
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function synth(word: string) {
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(word)
+    u.lang = 'en-US'
+    speechSynthesis.speak(u)
+  }
 }
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -257,21 +423,41 @@ function QuickTaskAdd() {
   const add = useTasks((st) => st.add)
   const { toast } = useToast()
   const [title, setTitle] = useState('')
-  const submit = () => {
-    if (!title.trim()) return
-    add({ title: title.trim(), priority: 'medium', dueDate: dayKey() })
+
+  const addTask = (text: string) => {
+    const t = text.trim()
+    if (!t) return
+    add({ title: t.charAt(0).toUpperCase() + t.slice(1), priority: 'medium', dueDate: dayKey() })
     toast({ kind: 'success', title: 'Task added for today' })
-    setTitle('')
   }
+  const submit = () => { addTask(title); setTitle('') }
+
+  // Voice: tap mic, speak, the spoken text is added to today's tasks as-is.
+  const { supported, listening, start, stop } = useSpeechRecognition({
+    onResult: (transcript) => addTask(transcript),
+  })
+
   return (
     <div className="mt-3 flex gap-2">
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="Add a task for today…"
+        placeholder={listening ? 'Listening… say your task' : 'Add a task for today…'}
         className="h-9"
       />
+      {supported && (
+        <Button
+          size="sm"
+          variant={listening ? 'destructive' : 'outline'}
+          className="h-9 w-9 shrink-0 p-0"
+          onClick={() => (listening ? stop() : start())}
+          aria-label={listening ? 'Stop listening' : 'Add task by voice'}
+          title="Add task by voice"
+        >
+          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </Button>
+      )}
       <Button size="sm" className="h-9" onClick={submit} disabled={!title.trim()}>
         <Plus className="h-4 w-4" /> Add
       </Button>

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Timer, CheckSquare, Droplets, Activity, Wind, Grip, Quote, CalendarDays, BarChart3, Settings } from 'lucide-react'
+import { LayoutDashboard, Timer, CheckSquare, Droplets, Activity, Wind, Grip, Quote, BookOpen, Code2, GitCompare, CalendarDays, BarChart3, Settings } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export interface NavItem {
@@ -18,6 +18,9 @@ export const NAV: NavItem[] = [
   { to: '/breathing', label: 'Breathing', icon: Wind },
   { to: '/bubbles', label: 'Bubble Wrap', icon: Grip },
   { to: '/motivation', label: 'Motivation', icon: Quote },
+  { to: '/vocabulary', label: 'Word of the Day', icon: BookOpen },
+  { to: '/dev-bytes', label: 'Frontend Bytes', icon: Code2 },
+  { to: '/diff', label: 'Diff Checker', icon: GitCompare },
   { to: '/appointments', label: 'Appointments', icon: CalendarDays, mobile: true },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
