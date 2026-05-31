@@ -43,3 +43,27 @@ export function playChime(kind: 'success' | 'alert' = 'success') {
     /* audio not available */
   }
 }
+
+/** Short tactile "pop" blip. `level` raises pitch (combo streak); `special` for golden bubbles. */
+export function playPop(level = 0, special = false) {
+  try {
+    audioCtx ??= new (window.AudioContext || (window as any).webkitAudioContext)()
+    const ctx = audioCtx
+    if (ctx.state === 'suspended') ctx.resume()
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = special ? 'sine' : 'triangle'
+    const base = (special ? 720 : 420 + Math.random() * 220) * (1 + Math.min(level, 12) * 0.045)
+    osc.frequency.setValueAtTime(base, now)
+    osc.frequency.exponentialRampToValueAtTime(base * 0.5, now + 0.09)
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.008)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.14)
+  } catch {
+    /* audio not available */
+  }
+}

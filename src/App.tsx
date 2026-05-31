@@ -10,6 +10,8 @@ import Pomodoro from '@/pages/Pomodoro'
 import Tasks from '@/pages/Tasks'
 import Water from '@/pages/Water'
 import Stretch from '@/pages/Stretch'
+import Breathing from '@/pages/Breathing'
+import Bubbles from '@/pages/Bubbles'
 import Motivation from '@/pages/Motivation'
 import Appointments from '@/pages/Appointments'
 import Insights from '@/pages/Insights'
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/water" element={<Water />} />
           <Route path="/stretch" element={<Stretch />} />
+          <Route path="/breathing" element={<Breathing />} />
+          <Route path="/bubbles" element={<Bubbles />} />
           <Route path="/motivation" element={<Motivation />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/insights" element={<Insights />} />

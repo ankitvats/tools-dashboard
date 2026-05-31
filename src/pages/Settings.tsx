@@ -7,7 +7,7 @@ import { ensureNotificationPermission } from '@/lib/notify'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { supportsNotificationTriggers } from '@/lib/pwa'
 
-const STORE_KEYS = ['td-theme', 'td-tasks', 'td-pomodoro', 'td-water', 'td-stretch', 'td-appointments', 'td-motivation']
+const STORE_KEYS = ['td-theme', 'td-tasks', 'td-pomodoro', 'td-water', 'td-stretch', 'td-breathing', 'td-bubbles', 'td-appointments', 'td-motivation']
 
 export default function SettingsPage() {
   const s = useSettings()
