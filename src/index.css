@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 20% 99%;
+    --foreground: 240 10% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 12%;
+
+    --primary: 256 90% 67%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 16% 96%;
+    --secondary-foreground: 240 10% 20%;
+
+    --muted: 240 16% 96%;
+    --muted-foreground: 240 6% 45%;
+
+    --accent: 256 90% 96%;
+    --accent-foreground: 256 70% 40%;
+
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 62% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 240 12% 90%;
+    --input: 240 12% 90%;
+    --ring: 256 90% 67%;
+
+    --radius: 0.85rem;
+  }
+
+  .dark {
+    --background: 240 14% 8%;
+    --foreground: 240 10% 95%;
+
+    --card: 240 12% 11%;
+    --card-foreground: 240 10% 95%;
+
+    --popover: 240 12% 11%;
+    --popover-foreground: 240 10% 95%;
+
+    --primary: 256 95% 72%;
+    --primary-foreground: 240 14% 8%;
+
+    --secondary: 240 8% 18%;
+    --secondary-foreground: 240 10% 92%;
+
+    --muted: 240 8% 16%;
+    --muted-foreground: 240 6% 60%;
+
+    --accent: 256 40% 24%;
+    --accent-foreground: 256 90% 88%;
+
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 55% 48%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 90% 56%;
+    --warning-foreground: 240 14% 8%;
+
+    --border: 240 8% 20%;
+    --input: 240 8% 22%;
+    --ring: 256 95% 72%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Smooth theme transition */
+  body,
+  body * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-card/70 backdrop-blur-xl border border-border/60;
+  }
+  .focus-ring {
+    @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
