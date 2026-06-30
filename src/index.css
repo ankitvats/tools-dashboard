@@ -1,3 +1,6 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,7 +41,7 @@
     --input: 240 12% 90%;
     --ring: 256 90% 67%;
 
-    --radius: 0.85rem;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -88,6 +91,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.01em;
   }
 
   /* Smooth theme transition */

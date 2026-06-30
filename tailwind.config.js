@@ -59,11 +59,13 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['GeistVariable', 'Geist', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['GeistMonoVariable', 'Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
         soft: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 4px 16px -2px rgb(0 0 0 / 0.06)',
         glow: '0 0 0 1px hsl(var(--primary) / 0.1), 0 8px 32px -8px hsl(var(--primary) / 0.35)',
+        'card-subtle': '0 1px 2px oklch(0.2 0 0 / 0.03)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
