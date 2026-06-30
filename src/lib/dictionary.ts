@@ -23,11 +23,10 @@ export interface WordEntry {
   summary: string
 }
 
-const DAILY_KEY = 'td-daily-word-v2'
+const DAILY_KEY = 'td-daily-word-v3'
 const API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
 
-/** Pool of words we draw from: the common-word list, minus tiny stopwords (the, of, a…). */
-const POOL = COMMON_WORDS.filter((w) => w.length >= 4)
+const POOL = COMMON_WORDS
 
 /** Stable key for favoriting. */
 export function wordKey(w: WordEntry | string): string {

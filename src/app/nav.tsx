@@ -1,4 +1,4 @@
-import { LayoutDashboard, Timer, CheckSquare, Droplets, Activity, Wind, Grip, Quote, BookOpen, Code2, GitCompare, CalendarDays, BarChart3, Settings } from 'lucide-react'
+import { LayoutDashboard, Timer, CheckSquare, Droplets, Activity, Wind, Grip, Quote, BookOpen, Code2, GitCompare, CalendarDays, BarChart3, Settings, History } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export interface NavItem {
@@ -11,6 +11,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, mobile: true },
+  { to: '/history', label: 'Daily History', icon: History },
   { to: '/pomodoro', label: 'Pomodoro', icon: Timer, mobile: true },
   { to: '/tasks', label: 'Tasks', icon: CheckSquare, mobile: true },
   { to: '/water', label: 'Water', icon: Droplets, mobile: true },

@@ -59,6 +59,7 @@ export default function Dashboard() {
                   <Timer className="h-4 w-4" />
                 </span>
                 <h3 className="font-semibold">Focus timer</h3>
+                {s.streaks.focus > 0 && <StreakBadge n={s.streaks.focus} />}
               </div>
               <Link to="/pomodoro" className="flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">
                 Full view <ArrowRight className="h-3 w-3" />
@@ -69,7 +70,7 @@ export default function Dashboard() {
         </Card>
 
         <div className="lg:col-span-2">
-          <TasksSection onToggle={toggleTask} />
+          <TasksSection onToggle={toggleTask} streak={s.streaks.tasks} />
         </div>
       </div>
 
@@ -85,6 +86,7 @@ export default function Dashboard() {
                   <Droplets className="h-4 w-4" />
                 </span>
                 <h3 className="font-semibold">Hydration</h3>
+                {s.streaks.water > 0 && <StreakBadge n={s.streaks.water} />}
               </div>
               <Link to="/water" className="flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">
                 Open <ArrowRight className="h-3 w-3" />
@@ -130,6 +132,14 @@ export default function Dashboard() {
         <DoseCard kind="joke" />
       </div>
     </div>
+  )
+}
+
+function StreakBadge({ n }: { n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 px-1.5 py-0.5 text-xs font-semibold text-orange-500">
+      🔥{n}
+    </span>
   )
 }
 
@@ -309,7 +319,7 @@ function dueBucket(key?: string): number {
   return key > today ? 1 : 2
 }
 
-function TasksSection({ onToggle }: { onToggle: (id: string) => void }) {
+function TasksSection({ onToggle, streak }: { onToggle: (id: string) => void; streak: number }) {
   const tasks = useTasks((st) => st.tasks)
   const [tab, setTab] = useState<'today' | 'all'>('today')
 
@@ -336,6 +346,7 @@ function TasksSection({ onToggle }: { onToggle: (id: string) => void }) {
     () => (tab === 'today' ? sorted.filter((t) => isToday(t)) : sorted),
     [sorted, tab],
   )
+  const allTodayDone = tab === 'today' && visible.length > 0 && visible.every((t) => isTaskDone(t))
 
   return (
     <Card className="flex h-full flex-col">
@@ -364,11 +375,20 @@ function TasksSection({ onToggle }: { onToggle: (id: string) => void }) {
               )
             })}
           </div>
-          <Link to="/tasks" className="flex items-center gap-0.5 pb-2.5 text-xs font-medium text-primary hover:underline">
-            Manage <ArrowRight className="h-3 w-3" />
-          </Link>
+          <div className="flex items-center gap-2 pb-2.5">
+            {streak > 0 && <StreakBadge n={streak} />}
+            <Link to="/tasks" className="flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">
+              Manage <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
 
+        {allTodayDone && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+            <span className="text-base">🎉</span>
+            <span className="font-semibold">All done for today — great work!</span>
+          </div>
+        )}
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
           {visible.length === 0 ? (
             <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
@@ -578,7 +598,7 @@ const CLOCKS = [
 
 function WorldClocks({ now }: { now: Date }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="hidden flex-wrap items-center gap-2 sm:flex">
       {CLOCKS.map((c) => {
         const time = now.toLocaleTimeString('en-US', { timeZone: c.tz, hour: 'numeric', minute: '2-digit', hour12: true })
         const date = now.toLocaleDateString('en-US', { timeZone: c.tz, weekday: 'short', day: 'numeric' })

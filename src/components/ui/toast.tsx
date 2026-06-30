@@ -9,6 +9,8 @@ interface Toast {
   title: string
   description?: string
   kind: ToastKind
+  action?: { label: string; onClick: () => void }
+  durationMs?: number
 }
 
 interface ToastCtx {
@@ -34,7 +36,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = React.useCallback((t: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => [...prev, { ...t, id }])
-    setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 4000)
+    setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), t.durationMs ?? 4000)
   }, [])
 
   const dismiss = (id: string) => setToasts((prev) => prev.filter((x) => x.id !== id))
@@ -59,6 +61,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 <p className="text-sm font-semibold">{t.title}</p>
                 {t.description && <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>}
               </div>
+              {t.action && (
+                <button
+                  onClick={() => { t.action!.onClick(); dismiss(t.id) }}
+                  className="shrink-0 rounded-md bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-secondary/80"
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button onClick={() => dismiss(t.id)} aria-label="Dismiss" className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>

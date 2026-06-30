@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Undo2, Droplets, BellOff, Bell } from 'lucide-react'
+import { Plus, Undo2, Droplets, BellOff, Bell, X } from 'lucide-react'
 import { Card, CardContent, Button, Input, Badge, Switch, Label, PageHeader } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/toast'
 import { useWater } from '@/store/water'
@@ -10,7 +10,7 @@ import { dayKey, pct } from '@/lib/utils'
 const QUICK = [250, 500, 750]
 
 export default function Water() {
-  const { entries, add, undoLast } = useWater()
+  const { entries, add, undoLast, remove } = useWater()
   const { waterGoalMl, waterReminderEnabled, waterReminderMin, set } = useSettings()
   const { toast } = useToast()
   const [custom, setCustom] = useState('')
@@ -56,7 +56,9 @@ export default function Water() {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold tabular-nums">{total} ml</p>
-              <p className="text-sm text-muted-foreground">of {waterGoalMl} ml · {remaining} ml to go</p>
+              <p className="text-sm text-muted-foreground">
+                ≈ {(total / 250).toFixed(1)} cups · {remaining} ml to go
+              </p>
             </div>
             {done && <Badge tone="success">Goal complete — great job! 💧</Badge>}
           </CardContent>
@@ -146,11 +148,18 @@ export default function Water() {
           ) : (
             <ul className="mt-3 flex flex-wrap gap-2">
               {todays.map((e) => (
-                <li key={e.id} className="rounded-lg bg-secondary px-3 py-1.5 text-sm">
+                <li key={e.id} className="group flex items-center gap-1.5 rounded-lg bg-secondary pl-3 pr-1.5 py-1.5 text-sm">
                   <span className="font-medium">{e.amountMl} ml</span>
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                   </span>
+                  <button
+                    onClick={() => remove(e.id)}
+                    aria-label="Remove entry"
+                    className="ml-0.5 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </li>
               ))}
             </ul>

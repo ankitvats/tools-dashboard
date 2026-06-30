@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react'
+import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, Search } from 'lucide-react'
 import { NAV } from '@/app/nav'
 import { cn } from '@/lib/utils'
 import { useUI } from '@/store/ui'
 import { useAuth } from '@/store/auth'
 import { ThemeToggle } from './ThemeToggle'
+import { CommandPalette } from './CommandPalette'
 
 function Logo({ collapsed }: { collapsed?: boolean }) {
   return (
@@ -72,6 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <CommandPalette />
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -80,7 +82,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       >
         <Logo collapsed={sidebarCollapsed} />
-        <div className="mt-4 flex-1 overflow-y-auto no-scrollbar">
+        <button
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+          title="Search commands (⌘K)"
+          className={cn(
+            'mt-3 flex items-center rounded-lg border border-border bg-secondary/60 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground',
+            sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2',
+          )}
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          {!sidebarCollapsed && (
+            <>
+              <span className="flex-1 text-left">Search commands…</span>
+              <kbd className="rounded border border-border bg-background px-1 py-0.5 text-[10px]">⌘K</kbd>
+            </>
+          )}
+        </button>
+        <div className="mt-3 flex-1 overflow-y-auto no-scrollbar">
           <SidebarLinks collapsed={sidebarCollapsed} />
         </div>
 
@@ -119,13 +137,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/70 px-4 py-2.5 backdrop-blur-xl lg:hidden">
         <Logo />
-        <button
-          aria-label="Open menu"
-          onClick={() => setMobileOpen(true)}
-          className="grid h-10 w-10 place-items-center rounded-lg hover:bg-secondary focus-ring"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            aria-label="Search commands"
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-secondary focus-ring"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+          <button
+            aria-label="Open menu"
+            onClick={() => setMobileOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-lg hover:bg-secondary focus-ring"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile drawer */}

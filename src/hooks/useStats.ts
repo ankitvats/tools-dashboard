@@ -17,6 +17,19 @@ export interface DayStat {
   stretches: number
 }
 
+function calcStreak(hasActivity: (d: string) => boolean): number {
+  const today = dayKey()
+  const todayHas = hasActivity(today)
+  let count = 0
+  for (let i = todayHas ? 0 : 1; i < 365; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    if (hasActivity(dayKey(d))) count++
+    else break
+  }
+  return count
+}
+
 export function useStats() {
   const tasks = useTasks((s) => s.tasks)
   const sessions = usePomodoro((s) => s.sessions)
@@ -63,6 +76,22 @@ export function useStats() {
       .filter((a) => new Date(a.start).getTime() >= Date.now())
       .sort((a, b) => a.start.localeCompare(b.start))
 
+    const taskDaySet = new Set(tasks.flatMap((t) => {
+      const days: string[] = []
+      if (t.completed && t.completedAt) days.push(t.completedAt.slice(0, 10))
+      if (t.lastCompletedDay) days.push(t.lastCompletedDay)
+      return days
+    }))
+    const waterByDay = new Map<string, number>()
+    water.forEach((w) => waterByDay.set(w.day, (waterByDay.get(w.day) ?? 0) + w.amountMl))
+    const focusDaySet = new Set(sessions.filter((s) => s.kind === 'focus').map((s) => s.day))
+
+    const streaks = {
+      tasks: calcStreak((d) => taskDaySet.has(d)),
+      water: calcStreak((d) => (waterByDay.get(d) ?? 0) >= waterGoalMl),
+      focus: calcStreak((d) => focusDaySet.has(d)),
+    }
+
     return {
       today,
       score,
@@ -78,6 +107,7 @@ export function useStats() {
       weeklyFocusMin,
       apptsToday,
       upcoming,
+      streaks,
     }
   }, [tasks, sessions, water, stretch, appts, waterGoalMl])
 }

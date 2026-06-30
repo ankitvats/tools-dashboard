@@ -9,6 +9,7 @@ interface WaterState {
   synced: boolean
   add: (amountMl: number) => void
   undoLast: () => void
+  remove: (id: string) => void
   syncFromDB: () => Promise<void>
 }
 
@@ -33,6 +34,11 @@ export const useWater = create<WaterState>()(
         const last = get().entries[0]
         set((s) => ({ entries: s.entries.slice(1) }))
         if (last) dbDeleteWater(last.id)
+      },
+
+      remove: (id) => {
+        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }))
+        dbDeleteWater(id)
       },
     }),
     { name: 'td-water' },

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Search, Trash2, Pencil, GripVertical, Flag, Bell, Tag, Repeat2 } from 'lucide-react'
 import { Card, CardContent, Button, Input, Textarea, Label, Badge, Progress, Switch, PageHeader } from '@/components/ui/primitives'
@@ -26,14 +27,48 @@ export default function Tasks() {
   const { tasks, add, update, remove, toggle, reorder } = useTasks()
   const { toast } = useToast()
 
-  const [tab, setTab] = useState('today')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = (searchParams.get('tab') ?? 'today') as 'today' | 'all'
+  const setTab = (v: string) =>
+    setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set('tab', v); return n }, { replace: true })
   const [query, setQuery] = useState('')
+  const actionHandled = useRef(false)
   const [priFilter, setPriFilter] = useState('all')
   const [catFilter, setCatFilter] = useState('all')
+  const [hideDone, setHideDone] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const deleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const dragId = useRef<string | null>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        e.key === 'n' &&
+        !e.ctrlKey && !e.metaKey && !e.altKey &&
+        !dialogOpen &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      ) {
+        e.preventDefault()
+        setEditing(null)
+        setDialogOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [dialogOpen])
+
+  useEffect(() => {
+    if (!actionHandled.current && searchParams.get('action') === 'new') {
+      actionHandled.current = true
+      setEditing(null)
+      setDialogOpen(true)
+      setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('action'); return n }, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const categories = useMemo(() => Array.from(new Set(tasks.map((t) => t.category).filter(Boolean))) as string[], [tasks])
 
@@ -44,11 +79,36 @@ export default function Tasks() {
     if (query) list = list.filter((t) => (t.title + ' ' + (t.notes ?? '')).toLowerCase().includes(query.toLowerCase()))
     if (priFilter !== 'all') list = list.filter((t) => t.priority === priFilter)
     if (catFilter !== 'all') list = list.filter((t) => t.category === catFilter)
+    if (hideDone) list = list.filter((t) => !isTaskDone(t))
+    list = list.filter((t) => !deletingIds.has(t.id))
     return list
-  }, [tasks, tab, query, priFilter, catFilter])
+  }, [tasks, tab, query, priFilter, catFilter, hideDone, deletingIds])
 
   const completed = filtered.filter((t) => isTaskDone(t)).length
   const progress = filtered.length ? Math.round((completed / filtered.length) * 100) : 0
+
+  const scheduleDelete = (id: string, title: string) => {
+    setDeletingIds((prev) => new Set([...prev, id]))
+    const timer = setTimeout(() => {
+      remove(id)
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+      deleteTimers.current.delete(id)
+    }, 5000)
+    deleteTimers.current.set(id, timer)
+    toast({
+      kind: 'info',
+      title: `"${title.length > 30 ? title.slice(0, 30) + '…' : title}" deleted`,
+      durationMs: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          clearTimeout(deleteTimers.current.get(id))
+          deleteTimers.current.delete(id)
+          setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+        },
+      },
+    })
+  }
 
   const onDrop = (targetId: string) => {
     if (!dragId.current || dragId.current === targetId) return
@@ -104,6 +164,15 @@ export default function Tasks() {
             options={[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c, label: c }))]}
           />
         )}
+        <button
+          onClick={() => setHideDone((v) => !v)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+            hideDone ? 'border-primary bg-accent text-accent-foreground' : 'border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
+          )}
+        >
+          {hideDone ? 'Show done' : 'Hide done'}
+        </button>
       </div>
 
       {filtered.length > 0 && (
@@ -176,7 +245,7 @@ export default function Tasks() {
                     <Badge tone={priorityTone[t.priority]} className="hidden sm:inline-flex">
                       <Flag className="h-3 w-3" /> {t.priority}
                     </Badge>
-                    <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:opacity-100">
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(t); setDialogOpen(true) }} aria-label="Edit">
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -184,7 +253,7 @@ export default function Tasks() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8 text-destructive"
-                        onClick={() => { remove(t.id); toast({ kind: 'info', title: 'Task deleted' }) }}
+                        onClick={() => scheduleDelete(t.id, t.title)}
                         aria-label="Delete"
                       >
                         <Trash2 className="h-4 w-4" />

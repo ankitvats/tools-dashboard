@@ -36,7 +36,6 @@ export default function DevBytes() {
         }
       />
 
-      {/* Tag filter */}
       <div className="flex flex-wrap gap-2">
         {DEV_TAGS.map((t) => (
           <button
@@ -58,7 +57,7 @@ export default function DevBytes() {
         <Card>
           <CardContent className="grid place-items-center gap-3 py-16 text-center">
             <Code2 className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Couldn’t load articles. Check your connection.</p>
+            <p className="text-sm text-muted-foreground">Couldn't load articles. Check your connection.</p>
             <Button onClick={() => load(tag)}><RefreshCw className="h-4 w-4" /> Try again</Button>
           </CardContent>
         </Card>
@@ -74,9 +73,7 @@ export default function DevBytes() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a) => (
-            <ArticleCard key={a.id} a={a} />
-          ))}
+          {articles.map((a) => <ArticleCard key={a.id} a={a} />)}
         </div>
       )}
     </div>

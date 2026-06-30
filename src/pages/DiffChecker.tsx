@@ -150,26 +150,47 @@ function countUnits(value: string, mode: Mode): number {
 // ── Inline view ───────────────────────────────────────────
 function InlineView({ parts, mode }: { parts: Change[]; mode: Mode }) {
   const lineBased = mode === 'lines' || mode === 'json'
+
+  if (!lineBased) {
+    return (
+      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed">
+        {parts.map((p, i) => {
+          const cls = p.added ? 'bg-success/15 text-success' : p.removed ? 'bg-destructive/15 text-destructive line-through decoration-destructive/50' : 'text-foreground'
+          return <span key={i} className={cls}>{p.value}</span>
+        })}
+      </pre>
+    )
+  }
+
+  type InlineRow = { sign: '+' | '-' | ' '; text: string; leftLn: number | null; rightLn: number | null; cls: string }
+  const rows: InlineRow[] = []
+  let leftLn = 1, rightLn = 1
+  for (const p of parts) {
+    const lines = p.value.replace(/\n$/, '').split('\n')
+    const sign: '+' | '-' | ' ' = p.added ? '+' : p.removed ? '-' : ' '
+    const cls = p.added ? 'bg-success/15 text-success' : p.removed ? 'bg-destructive/15 text-destructive' : 'text-foreground'
+    for (const ln of lines) {
+      rows.push({ sign, text: ln || ' ', cls, leftLn: p.added ? null : leftLn, rightLn: p.removed ? null : rightLn })
+      if (!p.added) leftLn++
+      if (!p.removed) rightLn++
+    }
+  }
+
   return (
-    <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed">
-      {parts.map((p, i) => {
-        const cls = p.added
-          ? 'bg-success/15 text-success'
-          : p.removed
-          ? 'bg-destructive/15 text-destructive line-through decoration-destructive/50'
-          : 'text-foreground'
-        if (lineBased) {
-          const lines = p.value.replace(/\n$/, '').split('\n')
-          const sign = p.added ? '+' : p.removed ? '-' : ' '
-          return lines.map((ln, j) => (
-            <div key={`${i}-${j}`} className={cn('px-2', cls)}>
-              <span className="select-none opacity-50">{sign} </span>{ln || ' '}
-            </div>
-          ))
-        }
-        return <span key={i} className={cls}>{p.value}</span>
-      })}
-    </pre>
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse font-mono text-xs leading-relaxed">
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className={r.cls}>
+              <td className="select-none border-r border-border px-2 py-px text-right tabular-nums text-muted-foreground/50 w-[3ch]">{r.leftLn ?? ''}</td>
+              <td className="select-none border-r border-border px-2 py-px text-right tabular-nums text-muted-foreground/50 w-[3ch]">{r.rightLn ?? ''}</td>
+              <td className="select-none border-r border-border px-2 py-px text-muted-foreground/60 w-4">{r.sign}</td>
+              <td className="px-3 py-px whitespace-pre">{r.text}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -239,7 +260,7 @@ function Cell({ text, side, type }: { text?: string; side: 'left' | 'right'; typ
   return (
     <td className={cn('w-1/2 whitespace-pre-wrap break-words border-l border-border px-3 align-top', cls)}>
       <span className="select-none opacity-40">{sign} </span>
-      {text ?? ' '}
+      {text ?? ' '}
     </td>
   )
 }

@@ -28,6 +28,7 @@ import DevBytes from '@/pages/DevBytes'
 import DiffChecker from '@/pages/DiffChecker'
 import Appointments from '@/pages/Appointments'
 import Insights from '@/pages/Insights'
+import History from '@/pages/History'
 import SettingsPage from '@/pages/Settings'
 
 function AppInner() {
@@ -68,6 +69,7 @@ function AppInner() {
         <Route path="/diff" element={<DiffChecker />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/history" element={<History />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>

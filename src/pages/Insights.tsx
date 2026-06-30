@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -16,16 +16,27 @@ import {
   YAxis,
 } from 'recharts'
 import { CheckSquare, Timer, Droplets, Activity, CalendarCheck } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui/primitives'
+import { Card, CardContent, CardHeader, CardTitle, PageHeader, Input, Label } from '@/components/ui/primitives'
 import { Tabs } from '@/components/ui/tabs'
 import { useTasks } from '@/store/tasks'
 import { usePomodoro } from '@/store/pomodoro'
 import { useWater } from '@/store/water'
 import { useStretch } from '@/store/stretch'
 import { useAppointments } from '@/store/appointments'
-import { lastNDays } from '@/lib/utils'
+import { lastNDays, dayKey } from '@/lib/utils'
 
-type Range = '7' | '30'
+type Range = '7' | '30' | 'custom'
+
+function daysInRange(from: string, to: string): string[] {
+  const out: string[] = []
+  const cur = new Date(from + 'T00:00:00')
+  const end = new Date(to + 'T00:00:00')
+  while (cur <= end) {
+    out.push(dayKey(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
 
 export default function Insights() {
   const tasks = useTasks((s) => s.tasks)
@@ -34,8 +45,14 @@ export default function Insights() {
   const stretch = useStretch((s) => s.logs)
   const appts = useAppointments((s) => s.appointments)
   const [range, setRange] = useState<Range>('7')
+  const today = dayKey()
+  const [customFrom, setCustomFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 13); return dayKey(d) })
+  const [customTo, setCustomTo] = useState(today)
 
-  const days = useMemo(() => lastNDays(Number(range)), [range])
+  const days = useMemo(() => {
+    if (range === 'custom') return customFrom && customTo && customFrom <= customTo ? daysInRange(customFrom, customTo) : []
+    return lastNDays(Number(range))
+  }, [range, customFrom, customTo])
 
   const series = useMemo(
     () =>
@@ -84,14 +101,32 @@ export default function Insights() {
     <div className="space-y-6">
       <PageHeader title="Productivity Insights" subtitle="Trends across focus, tasks, hydration and movement." />
 
-      <Tabs
-        value={range}
-        onChange={(v) => setRange(v as Range)}
-        tabs={[
-          { value: '7', label: 'Last 7 days' },
-          { value: '30', label: 'Last 30 days' },
-        ]}
-      />
+      <div className="flex flex-wrap items-end gap-4">
+        <Tabs
+          value={range}
+          onChange={(v) => setRange(v as Range)}
+          tabs={[
+            { value: '7', label: 'Last 7 days' },
+            { value: '30', label: 'Last 30 days' },
+            { value: 'custom', label: 'Custom range' },
+          ]}
+        />
+        {range === 'custom' && (
+          <div className="flex flex-wrap items-end gap-3 pb-0.5">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={customFrom} max={customTo} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 w-36 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={customTo} min={customFrom} max={today} onChange={(e) => setCustomTo(e.target.value)} className="h-8 w-36 text-sm" />
+            </div>
+            {days.length > 0 && (
+              <p className="pb-1 text-xs text-muted-foreground">{days.length} days</p>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Metric icon={CheckSquare} label="Tasks done" value={`${totals.tasksDone}`} tint="text-primary" />

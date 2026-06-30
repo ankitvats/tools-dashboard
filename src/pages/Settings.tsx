@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Bell, Download, Trash2, Upload, User, Smartphone, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Switch, Badge, PageHeader } from '@/components/ui/primitives'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -14,6 +15,8 @@ export default function SettingsPage() {
   const { toast } = useToast()
   const { canInstall, installed, promptInstall } = useInstallPrompt()
   const bgSupported = supportsNotificationTriggers()
+  const [resetMode, setResetMode] = useState(false)
+  const [resetInput, setResetInput] = useState('')
 
   const enableNotifications = async (v: boolean) => {
     if (v) {
@@ -59,7 +62,6 @@ export default function SettingsPage() {
   }
 
   const resetAll = () => {
-    if (!confirm('Erase all local data? This cannot be undone.')) return
     STORE_KEYS.forEach((k) => localStorage.removeItem(k))
     location.reload()
   }
@@ -160,24 +162,54 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Data</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={exportData}>
-            <Download className="h-4 w-4" /> Export
-          </Button>
-          <label>
-            <input
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])}
-            />
-            <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-secondary">
-              <Upload className="h-4 w-4" /> Import
-            </span>
-          </label>
-          <Button variant="destructive" onClick={resetAll}>
-            <Trash2 className="h-4 w-4" /> Reset all data
-          </Button>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={exportData}>
+              <Download className="h-4 w-4" /> Export
+            </Button>
+            <label>
+              <input
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])}
+              />
+              <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-secondary">
+                <Upload className="h-4 w-4" /> Import
+              </span>
+            </label>
+            {!resetMode && (
+              <Button variant="destructive" onClick={() => setResetMode(true)}>
+                <Trash2 className="h-4 w-4" /> Reset all data
+              </Button>
+            )}
+          </div>
+          {resetMode && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+              <p className="text-sm font-medium text-destructive">This will permanently erase all local data and cannot be undone.</p>
+              <p className="text-sm text-muted-foreground">Type <strong>RESET</strong> to confirm:</p>
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={resetInput}
+                  onChange={(e) => setResetInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setResetMode(false); setResetInput('') } }}
+                  placeholder="RESET"
+                  className="max-w-[160px] font-mono"
+                />
+                <Button
+                  variant="destructive"
+                  disabled={resetInput !== 'RESET'}
+                  onClick={resetAll}
+                >
+                  <Trash2 className="h-4 w-4" /> Confirm reset
+                </Button>
+                <Button variant="outline" onClick={() => { setResetMode(false); setResetInput('') }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
