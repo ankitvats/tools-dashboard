@@ -1,34 +1,31 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { dbFetchSettings, dbUpsertSettings } from '@/lib/db'
 
 export type Theme = 'light' | 'dark' | 'system'
 
-interface SettingsState {
+export interface SettingsState {
   theme: Theme
   userName: string
-  // pomodoro
   focusMin: number
   shortBreakMin: number
   longBreakMin: number
   sessionsBeforeLongBreak: number
   autoStartNext: boolean
   soundEnabled: boolean
-  // water
   waterGoalMl: number
   waterReminderMin: number
   waterReminderEnabled: boolean
-  // stretch
   stretchReminderMin: number
   stretchReminderEnabled: boolean
-  // notifications
   notificationsEnabled: boolean
-
   set: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
+  syncFromDB: () => Promise<void>
 }
 
 export const useSettings = create<SettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: 'system',
       userName: '',
       focusMin: 25,
@@ -43,8 +40,24 @@ export const useSettings = create<SettingsState>()(
       stretchReminderMin: 30,
       stretchReminderEnabled: true,
       notificationsEnabled: false,
-      set: (key, value) => set({ [key]: value } as any),
+
+      syncFromDB: async () => {
+        const remote = await dbFetchSettings()
+        if (remote) {
+          set(remote)
+        } else {
+          // first time — push local settings to DB
+          const { set: _set, syncFromDB: _sync, ...local } = get()
+          dbUpsertSettings(local)
+        }
+      },
+
+      set: (key, value) => {
+        set({ [key]: value } as any)
+        const { set: _set, syncFromDB: _sync, ...current } = get()
+        dbUpsertSettings({ ...current, [key]: value })
+      },
     }),
-    { name: 'td-theme' }, // shared key also read by index.html anti-flash script
+    { name: 'td-theme' },
   ),
 )

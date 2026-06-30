@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Menu, X, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react'
 import { NAV } from '@/app/nav'
 import { cn } from '@/lib/utils'
 import { useUI } from '@/store/ui'
+import { useAuth } from '@/store/auth'
 import { ThemeToggle } from './ThemeToggle'
 
 function Logo({ collapsed }: { collapsed?: boolean }) {
@@ -66,6 +67,7 @@ function SidebarLinks({ collapsed, onNavigate }: { collapsed?: boolean; onNaviga
 export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { sidebarCollapsed, toggleSidebar } = useUI()
+  const { signOut } = useAuth()
   const mobileItems = NAV.filter((n) => n.mobile)
 
   return (
@@ -94,6 +96,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {!sidebarCollapsed && <span>Collapse</span>}
         </button>
 
+        <button
+          onClick={() => signOut()}
+          title="Sign out"
+          className={cn(
+            'mt-1 flex items-center rounded-lg py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive',
+            sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3',
+          )}
+        >
+          <LogOut className="h-[18px] w-[18px]" />
+          {!sidebarCollapsed && <span>Sign out</span>}
+        </button>
+
         {!sidebarCollapsed && (
           <div className="mt-2 rounded-xl border border-border bg-background/60 p-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Appearance</p>
@@ -117,21 +131,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setMobileOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-border bg-card p-3"
-            >
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.aside
+            key="drawer"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+            className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-card p-3 lg:hidden"
+          >
               <div className="flex items-center justify-between">
                 <Logo />
                 <button aria-label="Close menu" onClick={() => setMobileOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-secondary">
@@ -144,8 +163,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="rounded-xl border border-border p-3">
                 <ThemeToggle />
               </div>
-            </motion.aside>
-          </div>
+              <button
+                onClick={() => { setMobileOpen(false); signOut() }}
+                className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+                Sign out
+              </button>
+          </motion.aside>
         )}
       </AnimatePresence>
 
