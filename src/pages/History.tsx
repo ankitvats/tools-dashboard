@@ -1,69 +1,124 @@
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, CheckSquare, Droplets, Timer, Activity, Wind, CalendarDays } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, PageHeader } from '@/components/ui/primitives'
-import { useTasks } from '@/store/tasks'
-import { usePomodoro } from '@/store/pomodoro'
-import { useWater } from '@/store/water'
-import { useStretch } from '@/store/stretch'
-import { useBreathing } from '@/store/breathing'
-import { useAppointments } from '@/store/appointments'
-import { useSettings } from '@/store/settings'
-import { STRETCHES } from '@/lib/data'
-import { cn, dayKey } from '@/lib/utils'
+import { useMemo, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CheckSquare,
+  Droplets,
+  Timer,
+  Activity,
+  Wind,
+  CalendarDays,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+} from "@/components/ui/primitives";
+import { useTasks } from "@/store/tasks";
+import { usePomodoro } from "@/store/pomodoro";
+import { useWater } from "@/store/water";
+import { useStretch } from "@/store/stretch";
+import { useBreathing } from "@/store/breathing";
+import { useAppointments } from "@/store/appointments";
+import { useSettings } from "@/store/settings";
+import { STRETCHES } from "@/lib/data";
+import { cn, dayKey } from "@/lib/utils";
 
 function addDays(dateKey: string, n: number): string {
-  const d = new Date(dateKey + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  return dayKey(d)
+  const d = new Date(dateKey + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return dayKey(d);
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function History() {
-  const today = dayKey()
-  const [selected, setSelected] = useState(today)
+  const today = dayKey();
+  const [selected, setSelected] = useState(today);
 
-  const tasks = useTasks((s) => s.tasks)
-  const sessions = usePomodoro((s) => s.sessions)
-  const water = useWater((s) => s.entries)
-  const stretch = useStretch((s) => s.logs)
-  const breathing = useBreathing((s) => s.logs)
-  const appointments = useAppointments((s) => s.appointments)
-  const waterGoalMl = useSettings((s) => s.waterGoalMl)
+  const tasks = useTasks((s) => s.tasks);
+  const completions = useTasks((s) => s.completions);
+  const sessions = usePomodoro((s) => s.sessions);
+  const water = useWater((s) => s.entries);
+  const stretch = useStretch((s) => s.logs);
+  const breathing = useBreathing((s) => s.logs);
+  const appointments = useAppointments((s) => s.appointments);
+  const waterGoalMl = useSettings((s) => s.waterGoalMl);
 
-  const stretchById = useMemo(() => Object.fromEntries(STRETCHES.map((s) => [s.id, s])), [])
+  const stretchById = useMemo(
+    () => Object.fromEntries(STRETCHES.map((s) => [s.id, s])),
+    [],
+  );
 
-  const dayTasks = useMemo(
-    () => tasks.filter((t) => t.completed && t.completedAt?.slice(0, 10) === selected),
-    [tasks, selected],
-  )
+  const dayTasks = useMemo(() => {
+    const oneOff = tasks.filter(
+      (t) =>
+        t.repeat !== "daily" &&
+        t.completed &&
+        t.completedAt?.slice(0, 10) === selected,
+    );
+    const tasksById = new Map(tasks.map((t) => [t.id, t]));
+    const daily = completions
+      .filter((c) => c.day === selected)
+      .map((c) => {
+        const t = tasksById.get(c.taskId);
+        return t ? { ...t, completedAt: c.completedAt } : null;
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+    return [...oneOff, ...daily];
+  }, [tasks, completions, selected]);
   const dayFocus = useMemo(
-    () => sessions.filter((s) => s.day === selected && s.kind === 'focus'),
+    () => sessions.filter((s) => s.day === selected && s.kind === "focus"),
     [sessions, selected],
-  )
+  );
   const dayBreaks = useMemo(
-    () => sessions.filter((s) => s.day === selected && s.kind !== 'focus'),
+    () => sessions.filter((s) => s.day === selected && s.kind !== "focus"),
     [sessions, selected],
-  )
-  const dayWater = useMemo(() => water.filter((w) => w.day === selected), [water, selected])
-  const dayStretch = useMemo(() => stretch.filter((s) => s.day === selected), [stretch, selected])
-  const dayBreathing = useMemo(() => breathing.filter((b) => b.day === selected), [breathing, selected])
+  );
+  const dayWater = useMemo(
+    () => water.filter((w) => w.day === selected),
+    [water, selected],
+  );
+  const dayStretch = useMemo(
+    () => stretch.filter((s) => s.day === selected),
+    [stretch, selected],
+  );
+  const dayBreathing = useMemo(
+    () => breathing.filter((b) => b.day === selected),
+    [breathing, selected],
+  );
   const dayAppointments = useMemo(
-    () => appointments.filter((a) => a.start.slice(0, 10) === selected).sort((a, b) => a.start.localeCompare(b.start)),
+    () =>
+      appointments
+        .filter((a) => a.start.slice(0, 10) === selected)
+        .sort((a, b) => a.start.localeCompare(b.start)),
     [appointments, selected],
-  )
+  );
 
-  const totalFocusMin = Math.round(dayFocus.reduce((a, s) => a + s.durationSec, 0) / 60)
-  const totalWaterMl = dayWater.reduce((a, w) => a + w.amountMl, 0)
-  const waterPct = waterGoalMl > 0 ? Math.min(100, Math.round((totalWaterMl / waterGoalMl) * 100)) : 0
+  const totalFocusMin = Math.round(
+    dayFocus.reduce((a, s) => a + s.durationSec, 0) / 60,
+  );
+  const totalWaterMl = dayWater.reduce((a, w) => a + w.amountMl, 0);
+  const waterPct =
+    waterGoalMl > 0
+      ? Math.min(100, Math.round((totalWaterMl / waterGoalMl) * 100))
+      : 0;
 
-  const isToday = selected === today
+  const isToday = selected === today;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Daily History" subtitle="Review what you accomplished on any past day." />
+      <PageHeader
+        title="Daily History"
+        subtitle="Review what you accomplished on any past day."
+      />
 
       {/* Date navigator */}
       <div className="flex items-center gap-2">
@@ -101,17 +156,42 @@ export default function History() {
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <SummaryMetric icon={CheckSquare} label="Tasks done" value={String(dayTasks.length)} tint="text-primary" />
-        <SummaryMetric icon={Timer} label="Focus time" value={`${totalFocusMin}m`} tint="text-[hsl(210_90%_60%)]" />
+        <SummaryMetric
+          icon={CheckSquare}
+          label="Tasks done"
+          value={String(dayTasks.length)}
+          tint="text-primary"
+        />
+        <SummaryMetric
+          icon={Timer}
+          label="Focus time"
+          value={`${totalFocusMin}m`}
+          tint="text-[hsl(210_90%_60%)]"
+        />
         <SummaryMetric
           icon={Droplets}
           label="Water"
           value={`${(totalWaterMl / 1000).toFixed(1)}L`}
           tint="text-[hsl(199_89%_55%)]"
         />
-        <SummaryMetric icon={Activity} label="Stretches" value={String(dayStretch.length)} tint="text-success" />
-        <SummaryMetric icon={Wind} label="Breathing" value={String(dayBreathing.length)} tint="text-[hsl(280_70%_60%)]" />
-        <SummaryMetric icon={CalendarDays} label="Meetings" value={String(dayAppointments.length)} tint="text-warning" />
+        <SummaryMetric
+          icon={Activity}
+          label="Stretches"
+          value={String(dayStretch.length)}
+          tint="text-success"
+        />
+        <SummaryMetric
+          icon={Wind}
+          label="Breathing"
+          value={String(dayBreathing.length)}
+          tint="text-[hsl(280_70%_60%)]"
+        />
+        <SummaryMetric
+          icon={CalendarDays}
+          label="Meetings"
+          value={String(dayAppointments.length)}
+          tint="text-warning"
+        />
       </div>
 
       {/* Detail cards */}
@@ -126,25 +206,33 @@ export default function History() {
           </CardHeader>
           <CardContent>
             {dayTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks completed.</p>
+              <p className="text-sm text-muted-foreground">
+                No tasks completed.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {dayTasks.map((t) => (
                   <li key={t.id} className="flex items-start gap-2">
                     <span
                       className={cn(
-                        'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-                        t.priority === 'high' && 'bg-destructive/15 text-destructive',
-                        t.priority === 'medium' && 'bg-warning/15 text-warning',
-                        t.priority === 'low' && 'bg-secondary text-muted-foreground',
+                        "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase min-w-[53px] text-center",
+                        t.priority === "high" &&
+                          "bg-destructive/15 text-destructive",
+                        t.priority === "medium" && "bg-warning/15 text-warning",
+                        t.priority === "low" &&
+                          "bg-secondary text-muted-foreground",
                       )}
                     >
                       {t.priority}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium leading-snug">{t.title}</p>
+                      <p className="text-sm font-medium leading-snug">
+                        {t.title}
+                      </p>
                       {t.completedAt && (
-                        <p className="text-xs text-muted-foreground">{formatTime(t.completedAt)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatTime(t.completedAt)}
+                        </p>
                       )}
                     </div>
                   </li>
@@ -164,26 +252,37 @@ export default function History() {
           </CardHeader>
           <CardContent>
             {dayFocus.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No focus sessions.</p>
+              <p className="text-sm text-muted-foreground">
+                No focus sessions.
+              </p>
             ) : (
               <div className="space-y-3">
                 <div className="flex gap-6">
                   <div>
-                    <p className="text-2xl font-bold tabular-nums">{dayFocus.length}</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {dayFocus.length}
+                    </p>
                     <p className="text-xs text-muted-foreground">sessions</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold tabular-nums">{totalFocusMin}m</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {totalFocusMin}m
+                    </p>
                     <p className="text-xs text-muted-foreground">focused</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold tabular-nums">{dayBreaks.length}</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {dayBreaks.length}
+                    </p>
                     <p className="text-xs text-muted-foreground">breaks</p>
                   </div>
                 </div>
                 <ul className="space-y-1">
                   {dayFocus.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                    <li
+                      key={s.id}
+                      className="flex items-center justify-between text-xs text-muted-foreground"
+                    >
                       <span>Focus · {Math.round(s.durationSec / 60)}m</span>
                       <span>{formatTime(s.completedAt)}</span>
                     </li>
@@ -223,7 +322,10 @@ export default function History() {
                 </div>
                 <ul className="space-y-1">
                   {dayWater.map((w) => (
-                    <li key={w.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                    <li
+                      key={w.id}
+                      className="flex items-center justify-between text-xs text-muted-foreground"
+                    >
                       <span>{w.amountMl} ml</span>
                       <span>{formatTime(w.at)}</span>
                     </li>
@@ -244,20 +346,31 @@ export default function History() {
           </CardHeader>
           <CardContent>
             {dayStretch.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No stretches logged.</p>
+              <p className="text-sm text-muted-foreground">
+                No stretches logged.
+              </p>
             ) : (
               <div>
-                <p className="text-2xl font-bold tabular-nums">{dayStretch.length}</p>
-                <p className="mb-3 text-xs text-muted-foreground">stretch sessions</p>
+                <p className="text-2xl font-bold tabular-nums">
+                  {dayStretch.length}
+                </p>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  stretch sessions
+                </p>
                 <ul className="space-y-1">
                   {dayStretch.map((s) => {
-                    const info = stretchById[s.stretchId]
+                    const info = stretchById[s.stretchId];
                     return (
-                      <li key={s.id} className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{info ? `${info.icon} ${info.name}` : s.stretchId}</span>
+                      <li
+                        key={s.id}
+                        className="flex items-center justify-between text-xs text-muted-foreground"
+                      >
+                        <span>
+                          {info ? `${info.icon} ${info.name}` : s.stretchId}
+                        </span>
                         <span>{formatTime(s.at)}</span>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               </div>
@@ -275,15 +388,30 @@ export default function History() {
           </CardHeader>
           <CardContent>
             {dayBreathing.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No breathing sessions.</p>
+              <p className="text-sm text-muted-foreground">
+                No breathing sessions.
+              </p>
             ) : (
               <div>
-                <p className="text-2xl font-bold tabular-nums">{dayBreathing.length}</p>
-                <p className="mb-3 text-xs text-muted-foreground">sessions · {Math.round(dayBreathing.reduce((a, b) => a + b.seconds, 0) / 60)} min total</p>
+                <p className="text-2xl font-bold tabular-nums">
+                  {dayBreathing.length}
+                </p>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  sessions ·{" "}
+                  {Math.round(
+                    dayBreathing.reduce((a, b) => a + b.seconds, 0) / 60,
+                  )}{" "}
+                  min total
+                </p>
                 <ul className="space-y-1">
                   {dayBreathing.map((b) => (
-                    <li key={b.id} className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{b.technique} · {b.rounds} rounds</span>
+                    <li
+                      key={b.id}
+                      className="flex items-center justify-between text-xs text-muted-foreground"
+                    >
+                      <span>
+                        {b.technique} · {b.rounds} rounds
+                      </span>
                       <span>{formatTime(b.at)}</span>
                     </li>
                   ))}
@@ -303,16 +431,21 @@ export default function History() {
           </CardHeader>
           <CardContent>
             {dayAppointments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No meetings scheduled.</p>
+              <p className="text-sm text-muted-foreground">
+                No meetings scheduled.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {dayAppointments.map((a) => (
                   <li key={a.id} className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-snug">{a.title}</p>
+                      <p className="text-sm font-medium leading-snug">
+                        {a.title}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatTime(a.start)}{a.durationMin ? ` · ${a.durationMin} min` : ''}
-                        {a.location ? ` · ${a.location}` : ''}
+                        {formatTime(a.start)}
+                        {a.durationMin ? ` · ${a.durationMin} min` : ""}
+                        {a.location ? ` · ${a.location}` : ""}
                       </p>
                     </div>
                   </li>
@@ -323,7 +456,7 @@ export default function History() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 function SummaryMetric({
@@ -332,10 +465,10 @@ function SummaryMetric({
   value,
   tint,
 }: {
-  icon: typeof CheckSquare
-  label: string
-  value: string
-  tint: string
+  icon: typeof CheckSquare;
+  label: string;
+  value: string;
+  tint: string;
 }) {
   return (
     <Card>
@@ -345,5 +478,5 @@ function SummaryMetric({
         <p className="text-xs text-muted-foreground">{label}</p>
       </CardContent>
     </Card>
-  )
+  );
 }

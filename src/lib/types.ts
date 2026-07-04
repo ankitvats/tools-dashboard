@@ -82,3 +82,11 @@ export interface Stretch {
   durationSec: number
   instructions: string
 }
+
+/** One record per day a daily task was marked done. Powers per-day history. */
+export interface TaskCompletion {
+  id: string
+  taskId: string
+  day: string // dayKey
+  completedAt: string // ISO datetime
+}

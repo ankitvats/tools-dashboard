@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { useAuth } from '@/store/auth'
-import type { Task, PomodoroSession, WaterEntry, StretchLog, Appointment } from './types'
+import type { Task, PomodoroSession, WaterEntry, StretchLog, Appointment, TaskCompletion } from './types'
 import type { SettingsState } from '@/store/settings'
 
 function uid() {
@@ -71,6 +71,35 @@ export async function dbUpsertTasks(tasks: Task[]) {
 
 export async function dbDeleteTask(id: string) {
   await supabase.from('tasks').delete().eq('id', id)
+}
+
+// ── Task completions (per-day history for daily tasks) ──────
+
+export async function dbFetchTaskCompletions(): Promise<TaskCompletion[]> {
+  const { data, error } = await supabase.from('task_completions').select('*')
+  if (error) { console.error(error); return [] }
+  return (data as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    taskId: r.task_id as string,
+    day: r.day as string,
+    completedAt: r.completed_at as string,
+  }))
+}
+
+export async function dbInsertTaskCompletion(c: TaskCompletion) {
+  const userId = uid()
+  if (!userId) return
+  await supabase.from('task_completions').upsert({
+    id: c.id,
+    user_id: userId,
+    task_id: c.taskId,
+    day: c.day,
+    completed_at: c.completedAt,
+  })
+}
+
+export async function dbDeleteTaskCompletion(taskId: string, day: string) {
+  await supabase.from('task_completions').delete().eq('task_id', taskId).eq('day', day)
 }
 
 // ── Pomodoro ──────────────────────────────────────────────

@@ -3,10 +3,22 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/store/auth'
 import { Button } from '@/components/ui/primitives'
 
+const CREDS_KEY = 'tools-dashboard-saved-creds'
+
+function loadSaved(): { email: string; password: string } {
+  try {
+    const raw = localStorage.getItem(CREDS_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return { email: '', password: '' }
+}
+
 export default function AuthPage() {
   const { user, signIn, loading } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const saved = loadSaved()
+  const [email, setEmail] = useState(saved.email)
+  const [password, setPassword] = useState(saved.password)
+  const [remember, setRemember] = useState(!!saved.email)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -17,7 +29,15 @@ export default function AuthPage() {
     setError(null)
     setSubmitting(true)
     const err = await signIn(email, password)
-    if (err) setError(err)
+    if (err) {
+      setError(err)
+    } else {
+      if (remember) {
+        localStorage.setItem(CREDS_KEY, JSON.stringify({ email, password }))
+      } else {
+        localStorage.removeItem(CREDS_KEY)
+      }
+    }
     setSubmitting(false)
   }
 
@@ -59,6 +79,16 @@ export default function AuthPage() {
                 className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <span className="text-sm text-muted-foreground">Remember me</span>
+            </label>
 
             {error && (
               <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
