@@ -56,7 +56,6 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { isTaskDone, isToday } from "@/lib/tasks";
 import { dayKey, pct, cn, formatClock } from "@/lib/utils";
 import type { SessionKind } from "@/lib/types";
-import { completeCurrentSession } from "@/hooks/usePomodoroEngine";
 import { ensureNotificationPermission } from "@/lib/notify";
 
 // ── Constants ────────────────────────────────────────────────
@@ -523,7 +522,19 @@ function FocusCard() {
             {running ? "Pause" : status === "paused" ? "Resume" : "Start"}
           </button>
           <button
-            onClick={() => completeCurrentSession()}
+            onClick={() => {
+              const { kind } = useTimer.getState()
+              const { sessionsBeforeLongBreak, autoStartNext } = useSettings.getState()
+              const { completedFocusCount } = usePomodoro.getState()
+              const next: SessionKind =
+                kind === 'focus'
+                  ? (completedFocusCount + 1) % sessionsBeforeLongBreak === 0
+                    ? 'long'
+                    : 'short'
+                  : 'focus'
+              useTimer.getState().advance(next)
+              if (autoStartNext) useTimer.getState().start()
+            }}
             className="grid h-9 w-9 place-items-center rounded-full border border-border bg-secondary text-muted-foreground transition-colors hover:bg-muted"
             aria-label="Skip"
           >
