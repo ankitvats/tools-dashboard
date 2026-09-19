@@ -4,7 +4,38 @@
 
 export type Priority = 'low' | 'medium' | 'high'
 
-export type Repeat = 'none' | 'daily'
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+/** Retained for backwards-compatible task records created before schedules. */
+export type Repeat = 'none' | RecurrenceFrequency
+
+export type MonthDay = number | 'last'
+
+/** A local-date recurrence rule. The date the rule produces is the occurrence due date. */
+export interface TaskSchedule {
+  frequency: RecurrenceFrequency
+  /** Repeat every N frequency units. Defaults to one. */
+  interval?: number
+  /** Sunday=0 through Saturday=6. Only used by weekly schedules. */
+  weekdays?: number[]
+  /** Day of a month, or its final day. Used by monthly/yearly schedules. */
+  monthDay?: MonthDay
+  /** January=1 through December=12. Used by yearly schedules. */
+  month?: number
+  /** First due date / recurrence anchor in local YYYY-MM-DD form. */
+  startsOn: string
+  /** Last due date, inclusive. */
+  endsOn?: string
+  /** Number of days before due date that the task becomes actionable. */
+  visibilityLeadDays?: number
+}
+
+export interface RecurringTaskReminder {
+  /** Fire once when the occurrence becomes available, or on its due date. */
+  timing: 'available' | 'due'
+  /** Local time in HH:mm form. */
+  time: string
+}
 
 export interface Task {
   id: string
@@ -17,10 +48,13 @@ export interface Task {
   dueDate?: string
   /** 'daily' = a recurring task that appears every day and resets each day. */
   repeat?: Repeat
+  /** The source of truth for new recurring tasks. `repeat` supports legacy records. */
+  schedule?: TaskSchedule
   /** For daily tasks: the dayKey on which it was last marked done. */
   lastCompletedDay?: string
   reminderAt?: string // ISO datetime
   reminderFired?: boolean
+  recurringReminder?: RecurringTaskReminder
   order: number
   createdAt: string
   completedAt?: string
@@ -87,6 +121,11 @@ export interface Stretch {
 export interface TaskCompletion {
   id: string
   taskId: string
+  /** Identifies a recurring cycle, normally the occurrence due date. */
+  occurrenceKey?: string
+  /** Date the completion/skip was recorded, for history rollups. */
   day: string // dayKey
-  completedAt: string // ISO datetime
+  status?: 'completed' | 'skipped' | 'reminded'
+  completedAt?: string // ISO datetime
+  reminderFiredAt?: string
 }

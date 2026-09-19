@@ -8,7 +8,7 @@ import { useUI } from '@/store/ui'
 import { useAuth } from '@/store/auth'
 import { useTasks } from '@/store/tasks'
 import { useAppointments } from '@/store/appointments'
-import { isToday } from '@/lib/tasks'
+import { getActiveOccurrences, isOccurrenceDone } from '@/lib/tasks'
 import { ThemeToggle } from './ThemeToggle'
 import { CommandPalette } from './CommandPalette'
 
@@ -92,9 +92,13 @@ function SectionHead({ children }: { children: React.ReactNode }) {
 function DesktopSectionedNav() {
   const { toolboxCollapsed, toggleToolbox } = useUI()
   const tasks = useTasks((s) => s.tasks)
+  const completions = useTasks((s) => s.completions)
   const appointments = useAppointments((s) => s.appointments)
 
-  const openTaskCount = useMemo(() => tasks.filter((t) => isToday(t)).length, [tasks])
+  const openTaskCount = useMemo(
+    () => getActiveOccurrences(tasks, completions).filter((occurrence) => !isOccurrenceDone(occurrence)).length,
+    [tasks, completions],
+  )
   const todayApptCount = useMemo(() => {
     const today = dayKey()
     return appointments.filter((a) => a.start.slice(0, 10) === today).length

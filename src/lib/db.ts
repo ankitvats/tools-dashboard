@@ -9,8 +9,8 @@ function uid() {
 
 // ── Tasks ─────────────────────────────────────────────────
 
-function toRow(t: Task, userId: string) {
-  return {
+function toRow(t: Task, userId: string): Record<string, unknown> {
+  const row: Record<string, unknown> = {
     id: t.id,
     user_id: userId,
     title: t.title,
@@ -27,6 +27,11 @@ function toRow(t: Task, userId: string) {
     created_at: t.createdAt,
     completed_at: t.completedAt ?? null,
   }
+  // These columns are introduced by the recurring-tasks migration. Omitting
+  // them for ordinary tasks keeps existing databases compatible until it runs.
+  if (t.schedule) row.schedule = t.schedule
+  if (t.recurringReminder) row.recurring_reminder = t.recurringReminder
+  return row
 }
 
 function fromRow(r: Record<string, unknown>): Task {
@@ -39,9 +44,11 @@ function fromRow(r: Record<string, unknown>): Task {
     category: (r.category as string) ?? undefined,
     dueDate: (r.due_date as string) ?? undefined,
     repeat: (r.repeat as Task['repeat']) ?? undefined,
+    schedule: (r.schedule as Task['schedule']) ?? undefined,
     lastCompletedDay: (r.last_completed_day as string) ?? undefined,
     reminderAt: (r.reminder_at as string) ?? undefined,
     reminderFired: (r.reminder_fired as boolean) ?? undefined,
+    recurringReminder: (r.recurring_reminder as Task['recurringReminder']) ?? undefined,
     order: r.order as number,
     createdAt: r.created_at as string,
     completedAt: (r.completed_at as string) ?? undefined,
@@ -60,13 +67,15 @@ export async function dbFetchTasks(): Promise<Task[]> {
 export async function dbUpsertTask(task: Task) {
   const userId = uid()
   if (!userId) return
-  await supabase.from('tasks').upsert(toRow(task, userId))
+  const { error } = await supabase.from('tasks').upsert(toRow(task, userId))
+  if (error) console.error('Could not save task:', error.message)
 }
 
 export async function dbUpsertTasks(tasks: Task[]) {
   const userId = uid()
   if (!userId) return
-  await supabase.from('tasks').upsert(tasks.map((t) => toRow(t, userId)))
+  const { error } = await supabase.from('tasks').upsert(tasks.map((t) => toRow(t, userId)))
+  if (error) console.error('Could not save tasks:', error.message)
 }
 
 export async function dbDeleteTask(id: string) {
@@ -81,8 +90,11 @@ export async function dbFetchTaskCompletions(): Promise<TaskCompletion[]> {
   return (data as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     taskId: r.task_id as string,
+    occurrenceKey: (r.occurrence_key as string) ?? undefined,
     day: r.day as string,
-    completedAt: r.completed_at as string,
+    status: (r.status as TaskCompletion['status']) ?? undefined,
+    completedAt: (r.completed_at as string) ?? undefined,
+    reminderFiredAt: (r.reminder_fired_at as string) ?? undefined,
   }))
 }
 
@@ -93,13 +105,16 @@ export async function dbInsertTaskCompletion(c: TaskCompletion) {
     id: c.id,
     user_id: userId,
     task_id: c.taskId,
+    occurrence_key: c.occurrenceKey ?? c.day,
     day: c.day,
-    completed_at: c.completedAt,
-  })
+    status: c.status ?? 'completed',
+    completed_at: c.completedAt ?? null,
+    reminder_fired_at: c.reminderFiredAt ?? null,
+  }, { onConflict: 'task_id,occurrence_key' })
 }
 
-export async function dbDeleteTaskCompletion(taskId: string, day: string) {
-  await supabase.from('task_completions').delete().eq('task_id', taskId).eq('day', day)
+export async function dbDeleteTaskCompletion(taskId: string, occurrenceKey: string) {
+  await supabase.from('task_completions').delete().eq('task_id', taskId).eq('occurrence_key', occurrenceKey)
 }
 
 // ── Pomodoro ──────────────────────────────────────────────

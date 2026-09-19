@@ -9,7 +9,7 @@ import { usePomodoro } from '@/store/pomodoro'
 import { useSettings } from '@/store/settings'
 import { useTasks } from '@/store/tasks'
 import type { SessionKind } from '@/lib/types'
-import { isTaskDone } from '@/lib/tasks'
+import { getActiveOccurrences, isOccurrenceDone } from '@/lib/tasks'
 import { dayKey, lastNDays } from '@/lib/utils'
 
 const KIND_ICON: Record<SessionKind, typeof Brain> = { focus: Brain, short: Coffee, long: Sofa }
@@ -20,6 +20,7 @@ export default function Pomodoro() {
   const syncDurations = useTimer((s) => s.syncDurations)
   const timerKind = useTimer((s) => s.kind)
   const tasks = useTasks((s) => s.tasks)
+  const completions = useTasks((s) => s.completions)
   const [workingOnId, setWorkingOnId] = useState<string>('')
 
   // pick up duration changes made in Settings (only applies while idle)
@@ -28,7 +29,7 @@ export default function Pomodoro() {
   }, [syncDurations])
 
   const today = dayKey()
-  const activeTasks = tasks.filter((t) => !isTaskDone(t))
+  const activeTasks = getActiveOccurrences(tasks, completions).filter((occurrence) => !isOccurrenceDone(occurrence))
   const focusToday = sessions.filter((s) => s.day === today && s.kind === 'focus')
   const chartData = useMemo(() =>
     lastNDays(7).map((d) => ({
@@ -63,7 +64,7 @@ export default function Pomodoro() {
                 className="max-w-[280px] text-sm"
                 options={[
                   { value: '', label: 'Working on…' },
-                  ...activeTasks.map((t) => ({ value: t.id, label: t.title })),
+                  ...activeTasks.map((occurrence) => ({ value: occurrence.task.id, label: occurrence.task.title })),
                 ]}
               />
             </div>

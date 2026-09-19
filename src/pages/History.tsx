@@ -25,6 +25,7 @@ import { useAppointments } from "@/store/appointments";
 import { useSettings } from "@/store/settings";
 import { STRETCHES } from "@/lib/data";
 import { cn, dayKey } from "@/lib/utils";
+import { getTaskSchedule } from "@/lib/tasks";
 
 function addDays(dateKey: string, n: number): string {
   const d = new Date(dateKey + "T00:00:00");
@@ -60,16 +61,16 @@ export default function History() {
   const dayTasks = useMemo(() => {
     const oneOff = tasks.filter(
       (t) =>
-        t.repeat !== "daily" &&
+        !getTaskSchedule(t) &&
         t.completed &&
         t.completedAt?.slice(0, 10) === selected,
     );
     const tasksById = new Map(tasks.map((t) => [t.id, t]));
     const daily = completions
-      .filter((c) => c.day === selected)
+      .filter((c) => c.day === selected && c.status !== "skipped" && c.status !== "reminded" && Boolean(c.completedAt))
       .map((c) => {
         const t = tasksById.get(c.taskId);
-        return t ? { ...t, completedAt: c.completedAt } : null;
+        return t && c.completedAt ? { ...t, completedAt: c.completedAt } : null;
       })
       .filter((t): t is NonNullable<typeof t> => t !== null);
     return [...oneOff, ...daily];

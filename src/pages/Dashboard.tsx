@@ -45,7 +45,6 @@ import { useToast } from "@/components/ui/toast";
 import { useDailyQuote } from "@/hooks/useDailyQuote";
 import { fetchRandomQuote, type ApiQuote } from "@/lib/quotes";
 import {
-  fetchRandomWord,
   getDailyWord,
   type WordEntry,
 } from "@/lib/dictionary";
@@ -53,7 +52,7 @@ import { getDailyDose, fetchDose, type Dose } from "@/lib/dose";
 import { AFFIRMATIONS } from "@/lib/affirmations";
 import { useVocabulary } from "@/store/vocabulary";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { isTaskDone, isToday } from "@/lib/tasks";
+import { getActiveOccurrences, getOccurrencesInRange, isOccurrenceDone } from "@/lib/tasks";
 import { dayKey, pct, cn, formatClock } from "@/lib/utils";
 import type { SessionKind } from "@/lib/types";
 import { ensureNotificationPermission } from "@/lib/notify";
@@ -89,13 +88,6 @@ function dueMeta(key?: string) {
             day: "numeric",
           });
   return { label, overdue: key < today, isToday: key === today };
-}
-
-function dueBucket(key?: string): number {
-  if (!key) return 3;
-  const today = dayKey();
-  if (key === today) return 0;
-  return key > today ? 1 : 2;
 }
 
 function getDailyIndex(max: number) {
@@ -153,36 +145,27 @@ function WorldClocks({ now }: { now: Date }) {
 
 function TodayTasksCard() {
   const tasks = useTasks((s) => s.tasks);
+  const completions = useTasks((s) => s.completions);
   const toggleTask = useTasks((s) => s.toggle);
   const [tab, setTab] = useState<"today" | "upcoming">("today");
 
-  const sorted = useMemo(
-    () =>
-      [...tasks].sort((a, b) => {
-        const da = isTaskDone(a),
-          db = isTaskDone(b);
-        if (da !== db) return da ? 1 : -1;
-        const ba = a.repeat === "daily" ? 0 : dueBucket(a.dueDate);
-        const bb = b.repeat === "daily" ? 0 : dueBucket(b.dueDate);
-        if (ba !== bb) return ba - bb;
-        if (ba === 1) return a.dueDate! < b.dueDate! ? -1 : 1;
-        if (ba === 2) return a.dueDate! > b.dueDate! ? -1 : 1;
-        return a.order - b.order;
-      }),
-    [tasks],
+  const todayItems = useMemo(
+    () => getActiveOccurrences(tasks, completions).sort((a, b) => {
+      const doneA = isOccurrenceDone(a), doneB = isOccurrenceDone(b);
+      return doneA !== doneB ? Number(doneA) - Number(doneB) : a.dueDate.localeCompare(b.dueDate);
+    }),
+    [tasks, completions],
   );
-
-  const todayItems = useMemo(() => sorted.filter((t) => isToday(t)), [sorted]);
   const upcomingItems = useMemo(
     () =>
-      sorted.filter(
-        (t) => !isToday(t) && t.repeat !== "daily" && (!t.dueDate || t.dueDate > dayKey()),
-      ),
-    [sorted],
+      tasks.flatMap((task) => getOccurrencesInRange(task, dayKey(new Date(Date.now() + 864e5)), dayKey(new Date(Date.now() + 30 * 864e5)), completions))
+        .filter((occurrence) => occurrence.status === 'active')
+        .sort((a, b) => a.availableFrom.localeCompare(b.availableFrom)),
+    [tasks, completions],
   );
   const visible = tab === "today" ? todayItems : upcomingItems;
 
-  const doneCount = todayItems.filter((t) => isTaskDone(t)).length;
+  const doneCount = todayItems.filter(isOccurrenceDone).length;
   const totalCount = todayItems.length;
   const allDone = totalCount > 0 && doneCount === totalCount;
 
@@ -256,20 +239,18 @@ function TodayTasksCard() {
             </div>
           ) : (
             <ul className="space-y-0.5 grid max-w-full">
-              {visible.map((t) => {
-                const done = isTaskDone(t);
-                const due =
-                  t.repeat === "daily"
-                    ? { label: "Daily", overdue: false, isToday: true }
-                    : dueMeta(t.dueDate);
+              {visible.map((occurrence) => {
+                const { task: t } = occurrence;
+                const done = isOccurrenceDone(occurrence);
+                const due = dueMeta(occurrence.dueDate);
                 const catColor = t.category
                   ? (CATEGORY_COLORS[t.category] ??
                     "bg-secondary text-muted-foreground")
                   : null;
                 return (
-                  <li key={t.id} className="min-w-0">
+                  <li key={`${t.id}-${occurrence.occurrenceKey}`} className="min-w-0">
                     <button
-                      onClick={() => toggleTask(t.id)}
+                      onClick={() => toggleTask(t.id, occurrence.occurrenceKey)}
                       className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left text-sm hover:bg-secondary transition-colors truncate"
                     >
                       <span
@@ -805,7 +786,7 @@ function WordCard() {
   const refresh = async () => {
     setLoading(true);
     try {
-      setEntry(await fetchRandomWord());
+      setEntry(await getDailyWord());
     } catch {
       /* keep current */
     }
@@ -901,15 +882,6 @@ function WordCard() {
                   {entry.summary}
                 </p>
               )}
-              <div className="mt-4 flex items-center justify-end">
-                <button
-                  onClick={refresh}
-                  className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  New word
-                </button>
-              </div>
             </>
           )}
         </div>

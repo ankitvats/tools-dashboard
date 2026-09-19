@@ -23,8 +23,9 @@ export interface WordEntry {
   summary: string
 }
 
-const DAILY_KEY = 'td-daily-word-v3'
+const DAILY_KEY = 'td-daily-word-v4'
 const API = 'https://api.dictionaryapi.dev/api/v2/entries/en'
+const WORD_OF_THE_DAY_API = 'https://wordoftheday.freeapi.me/'
 
 const POOL = COMMON_WORDS
 
@@ -81,6 +82,38 @@ function normalize(word: string, raw: any[]): WordEntry {
   return { word, phonetic, audio: audio?.startsWith('//') ? `https:${audio}` : audio, meanings, summary }
 }
 
+/** Normalize FreeAPI.me's dedicated daily-word response into the shared UI shape. */
+function normalizeDailyWord(raw: unknown): WordEntry {
+  if (!raw || typeof raw !== 'object') throw new Error('malformed daily word')
+  const data = raw as Record<string, unknown>
+  const word = typeof data.word === 'string' ? data.word : ''
+  const definition = typeof data.definition === 'string' ? data.definition : ''
+  if (!word || !definition) throw new Error('malformed daily word')
+  return {
+    word,
+    phonetic: typeof data.pronunciation === 'string' ? data.pronunciation : undefined,
+    summary: definition,
+    meanings: [{
+      partOfSpeech: typeof data.partOfSpeech === 'string' ? data.partOfSpeech : '',
+      synonyms: [],
+      antonyms: [],
+      definitions: [{
+        definition,
+        example: typeof data.example === 'string' ? data.example : undefined,
+        synonyms: [],
+        antonyms: [],
+      }],
+    }],
+  }
+}
+
+/** Fetch the provider's current Word of the Day without reading or updating the local cache. */
+export async function fetchWordOfTheDay(signal?: AbortSignal): Promise<WordEntry> {
+  const res = await fetch(WORD_OF_THE_DAY_API, { signal })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return normalizeDailyWord(await res.json())
+}
+
 /** Fetch full entry for a word from the free dictionary API. */
 export async function fetchWord(word: string, signal?: AbortSignal): Promise<WordEntry> {
   const res = await fetch(`${API}/${encodeURIComponent(word)}`, { signal })
@@ -108,7 +141,7 @@ export async function fetchRandomWord(signal?: AbortSignal): Promise<WordEntry> 
   throw new Error('no word available')
 }
 
-/** Today's word entry — cached per day in localStorage so it stays stable across the day. */
+/** Today's dedicated daily word, cached locally; a local random-word fallback keeps the feature available during an outage. */
 export async function getDailyWord(signal?: AbortSignal): Promise<WordEntry> {
   const today = dayKey()
   try {
@@ -120,7 +153,13 @@ export async function getDailyWord(signal?: AbortSignal): Promise<WordEntry> {
   } catch {
     /* ignore */
   }
-  const entry = await fetchRandomWord(signal)
+  let entry: WordEntry
+  try {
+    entry = await fetchWordOfTheDay(signal)
+  } catch (error) {
+    if (signal?.aborted) throw error
+    entry = await fetchRandomWord(signal)
+  }
   try {
     localStorage.setItem(DAILY_KEY, JSON.stringify({ day: today, entry }))
   } catch {

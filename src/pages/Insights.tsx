@@ -40,6 +40,7 @@ function daysInRange(from: string, to: string): string[] {
 
 export default function Insights() {
   const tasks = useTasks((s) => s.tasks)
+  const completions = useTasks((s) => s.completions)
   const sessions = usePomodoro((s) => s.sessions)
   const water = useWater((s) => s.entries)
   const stretch = useStretch((s) => s.logs)
@@ -64,13 +65,13 @@ export default function Insights() {
             range === '7'
               ? dt.toLocaleDateString(undefined, { weekday: 'short' })
               : dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-          tasks: tasks.filter((t) => t.completed && t.completedAt?.slice(0, 10) === d).length,
+          tasks: tasks.filter((t) => t.completed && t.completedAt?.slice(0, 10) === d && !t.schedule && t.repeat !== 'daily').length + completions.filter((c) => c.day === d && c.status !== 'skipped' && c.status !== 'reminded' && Boolean(c.completedAt)).length,
           focusHours: +(sessions.filter((s) => s.day === d && s.kind === 'focus').reduce((a, s) => a + s.durationSec, 0) / 3600).toFixed(2),
           water: water.filter((w) => w.day === d).reduce((a, w) => a + w.amountMl, 0),
           stretches: stretch.filter((s) => s.day === d).length,
         }
       }),
-    [days, range, tasks, sessions, water, stretch],
+    [days, range, tasks, completions, sessions, water, stretch],
   )
 
   const totals = useMemo(() => {

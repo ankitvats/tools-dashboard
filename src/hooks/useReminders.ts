@@ -5,6 +5,8 @@ import { useTasks } from "@/store/tasks";
 import { useAppointments } from "@/store/appointments";
 import { notify, playChime } from "@/lib/notify";
 import { backgroundRemindersActive } from "@/lib/pwa";
+import { getActiveOccurrences, isOccurrenceDone } from "@/lib/tasks";
+import { dayKey } from "@/lib/utils";
 
 /**
  * Central reminder engine. Mounted once at app root.
@@ -17,6 +19,7 @@ export function useReminders() {
   const waterEntries = useWater((w) => w.entries);
   const tasks = useTasks((t) => t.tasks);
   const updateTask = useTasks((t) => t.update);
+  const markRecurringReminderFired = useTasks((t) => t.markRecurringReminderFired);
   const appts = useAppointments((a) => a.appointments);
   const updateAppt = useAppointments((a) => a.update);
 
@@ -69,6 +72,21 @@ export function useReminders() {
           updateTask(t.id, { reminderFired: true });
           notify("✅ Task reminder", t.title);
           if (st.soundEnabled) playChime("task");
+        }
+      }
+
+      // Recurring reminders are calculated from the active occurrence rather than
+      // a single static datetime. Delivery is remembered per occurrence.
+      const taskState = useTasks.getState();
+      for (const occurrence of getActiveOccurrences(taskState.tasks, taskState.completions, dayKey())) {
+        const reminder = occurrence.task.recurringReminder;
+        if (!reminder || isOccurrenceDone(occurrence) || occurrence.completion?.reminderFiredAt) continue;
+        const triggerDay = reminder.timing === 'available' ? occurrence.availableFrom : occurrence.dueDate;
+        const fireAt = new Date(`${triggerDay}T${reminder.time}:00`).getTime();
+        if (fireAt <= now) {
+          markRecurringReminderFired(occurrence.task.id, occurrence.occurrenceKey);
+          notify('✅ Task reminder', occurrence.task.title);
+          if (st.soundEnabled) playChime('task');
         }
       }
 

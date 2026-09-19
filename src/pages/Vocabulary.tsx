@@ -3,9 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { RefreshCw, BookmarkPlus, Bookmark, Volume2, ChevronDown, ChevronUp, BookOpen, Share2 } from 'lucide-react'
 import { Card, CardContent, Button, Badge, PageHeader } from '@/components/ui/primitives'
 import { useToast } from '@/components/ui/toast'
-import { fetchRandomWord, getDailyWord, wordKey, type WordEntry } from '@/lib/dictionary'
+import { getDailyWord, wordKey, type WordEntry } from '@/lib/dictionary'
 import { useVocabulary } from '@/store/vocabulary'
-import { cn } from '@/lib/utils'
 
 export default function Vocabulary() {
   const { saved, toggleSaved } = useVocabulary()
@@ -27,9 +26,9 @@ export default function Vocabulary() {
     setLoading(true)
     setExpanded(false)
     try {
-      setCurrent(await fetchRandomWord())
+      setCurrent(await getDailyWord())
     } catch {
-      toast({ kind: 'warning', title: 'Could not fetch a new word — try again' })
+      toast({ kind: 'warning', title: 'Could not load today’s word — try again' })
     }
     setLoading(false)
   }
@@ -55,8 +54,6 @@ export default function Vocabulary() {
               onToggleExpand={() => setExpanded((v) => !v)}
               saved={isSaved}
               onSave={() => toggleSaved(current)}
-              onRefresh={refresh}
-              loading={loading}
             />
           </motion.div>
         ) : (
@@ -93,15 +90,13 @@ function fallbackSpeak(word: string) {
 }
 
 function WordCard({
-  entry, expanded, onToggleExpand, saved, onSave, onRefresh, loading,
+  entry, expanded, onToggleExpand, saved, onSave,
 }: {
   entry: WordEntry
   expanded: boolean
   onToggleExpand: () => void
   saved: boolean
   onSave: () => void
-  onRefresh: () => void
-  loading: boolean
 }) {
   const { toast } = useToast()
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -157,9 +152,6 @@ function WordCard({
           </Button>
           <Button variant="outline" size="icon" onClick={share} aria-label="Share">
             <Share2 className="h-5 w-5" />
-          </Button>
-          <Button variant="outline" onClick={onRefresh} disabled={loading} className="ml-auto">
-            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> New word
           </Button>
         </div>
 

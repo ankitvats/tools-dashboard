@@ -2,6 +2,8 @@ import { useSettings } from '@/store/settings'
 import { useWater } from '@/store/water'
 import { useTasks } from '@/store/tasks'
 import { useAppointments } from '@/store/appointments'
+import { getOccurrencesInRange, isOccurrenceDone } from '@/lib/tasks'
+import { dayKey } from '@/lib/utils'
 
 const TAG_PREFIX = 'td-'
 const HORIZON_MS = 8 * 60 * 60 * 1000 // schedule the next 8 hours of interval reminders
@@ -71,8 +73,20 @@ export async function scheduleBackgroundReminders(): Promise<boolean> {
   }
 
   // Task reminders
-  for (const t of useTasks.getState().tasks) {
+  const taskState = useTasks.getState()
+  for (const t of taskState.tasks) {
     if (t.reminderAt && !t.completed) show(reg, `task-${t.id}`, new Date(t.reminderAt).getTime(), '✅ Task reminder', t.title, '/tasks')
+  }
+  const today = dayKey()
+  const tomorrow = dayKey(new Date(Date.now() + 864e5))
+  for (const task of taskState.tasks) {
+    for (const occurrence of getOccurrencesInRange(task, today, tomorrow, taskState.completions)) {
+      const reminder = task.recurringReminder
+      if (!reminder || isOccurrenceDone(occurrence) || occurrence.completion?.reminderFiredAt) continue
+      const triggerDay = reminder.timing === 'available' ? occurrence.availableFrom : occurrence.dueDate
+      const at = new Date(`${triggerDay}T${reminder.time}:00`).getTime()
+      show(reg, `task-${task.id}-${occurrence.occurrenceKey}`, at, '✅ Task reminder', task.title, '/tasks')
+    }
   }
 
   void useWater // water drinking resets the in-tab clock; triggers use a fixed cadence
