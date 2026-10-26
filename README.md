@@ -19,19 +19,20 @@ npm run preview  # serve the production build
 
 ## Tech stack
 
-| Concern        | Choice |
-|----------------|--------|
-| Framework      | React 18 + TypeScript |
-| Build          | Vite |
-| Styling        | Tailwind CSS (CSS-variable design tokens, light/dark) |
-| State          | Zustand + `persist` middleware (localStorage) |
-| Charts         | Recharts |
-| Icons          | Lucide |
-| Animation      | Framer Motion |
-| Routing        | React Router |
-| Dates          | date-fns |
+| Concern   | Choice                                                |
+| --------- | ----------------------------------------------------- |
+| Framework | React 18 + TypeScript                                 |
+| Build     | Vite                                                  |
+| Styling   | Tailwind CSS (CSS-variable design tokens, light/dark) |
+| State     | Zustand + `persist` middleware (localStorage)         |
+| Charts    | Recharts                                              |
+| Icons     | Lucide                                                |
+| Animation | Framer Motion                                         |
+| Routing   | React Router                                          |
+| Dates     | date-fns                                              |
 
 **Notes / deliberate deviations from the brief**
+
 - **UI components** are hand-built in the shadcn/ui style (same tokens & API shape) rather than pulled via the shadcn CLI, so the project is self-contained with zero Radix runtime.
 - **Calendar** is a custom month grid (date-fns) instead of FullCalendar — lighter, themed, and dependency-free.
 - **Storage** uses localStorage through Zustand `persist` rather than raw IndexedDB. Each domain is its own key, so swapping the persistence layer (IndexedDB or a REST/GraphQL backend) is isolated to `src/store/*`.
@@ -93,6 +94,16 @@ Each store persists to its own key: `td-tasks`, `td-pomodoro`, `td-water`, `td-s
 
 ---
 
+## Exercise tracking
+
+- Open **Focus → Exercise** (`/exercise`) to quick-log common home exercises, search the built-in library, or add a personal exercise.
+- Log sets with repetitions, seconds, or yoga rounds. Quick-log buttons reuse the latest logged values. Dates default to today; past entries can be added, edited, or deleted.
+- Exercise data is cached per account in `td-exercise`. Unsaved changes remain on the device and can be retried from the page; reconnecting while the page is open also retries.
+- **Database setup:** apply `supabase/migrations/202610260001_exercise_tracking.sql` to your Supabase project to create the two exercise tables and account-isolation policies. Until then, local logging works but cloud sync will show an error. This migration does not change existing tables.
+- Run the focused tests with `node --test tests/exercise.test.mjs` and the production check with `npm run build`.
+
+---
+
 ## Productivity score
 
 Computed in `useStats.ts`, blended 0–100:
@@ -108,6 +119,7 @@ where each sub-score is a capped percentage of a daily target (tasks due today c
 ## Reminder engine
 
 `useReminders()` mounts once in `App`. A 15s interval reads the latest store snapshots and fires:
+
 - **Water / stretch** — interval nudges, gated by the per-feature enable toggle and interval; the water clock resets whenever you log a drink.
 - **Tasks** — when `reminderAt` passes (once, via `reminderFired`).
 - **Appointments** — `reminderLead` minutes before `start`.
@@ -123,11 +135,14 @@ Each uses the Notification API (if permission granted in Settings) plus an optio
 - **Motion**: page transitions, list add/remove, shared-layout active nav indicator, spring dialogs/toasts.
 
 ## UX flows
+
 - **Sidebar** (desktop) ↔ **bottom nav + drawer** (mobile), with an optional **right rail** (xl+) for live stats and upcoming events.
 - Create/edit flows use a single dialog component per module; destructive actions confirm; every mutation emits a toast.
 
 ## Accessibility
+
 - Semantic roles (`dialog`, `switch`, `tablist`/`tab`), `aria-label`s on icon buttons, Escape-to-close + scroll-lock on modals, visible focus rings (`focus-ring`), `prefers-color-scheme` support, and `tabular-nums` for stable numeric UIs.
 
 ## Responsiveness
+
 - Mobile-first grids, `env(safe-area-inset-bottom)` aware bottom nav, fluid charts via `ResponsiveContainer`, and touch-friendly hit targets.

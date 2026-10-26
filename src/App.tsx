@@ -1,58 +1,62 @@
-import { useEffect } from 'react'
-import { Route, Routes } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
-import { AuthGuard } from '@/components/AuthGuard'
-import { ToastProvider } from '@/components/ui/toast'
-import { useApplyTheme } from '@/hooks/useTheme'
-import { useReminders } from '@/hooks/useReminders'
-import { useBackgroundReminders } from '@/hooks/useBackgroundReminders'
-import { usePomodoroEngine } from '@/hooks/usePomodoroEngine'
-import { useAuth } from '@/store/auth'
-import { useTasks } from '@/store/tasks'
-import { usePomodoro } from '@/store/pomodoro'
-import { useWater } from '@/store/water'
-import { useStretch } from '@/store/stretch'
-import { useAppointments } from '@/store/appointments'
-import { useSettings } from '@/store/settings'
-import AuthPage from '@/pages/Auth'
-import Dashboard from '@/pages/Dashboard'
-import Pomodoro from '@/pages/Pomodoro'
-import Tasks from '@/pages/Tasks'
-import Water from '@/pages/Water'
-import Stretch from '@/pages/Stretch'
-import Breathing from '@/pages/Breathing'
-import Bubbles from '@/pages/Bubbles'
-import Motivation from '@/pages/Motivation'
-import Vocabulary from '@/pages/Vocabulary'
-import DevBytes from '@/pages/DevBytes'
-import DiffChecker from '@/pages/DiffChecker'
-import Appointments from '@/pages/Appointments'
-import Insights from '@/pages/Insights'
-import History from '@/pages/History'
-import SettingsPage from '@/pages/Settings'
+import { useEffect } from "react";
+import { Route, Routes } from "react-router-dom";
+import { Layout } from "@/components/Layout";
+import { AuthGuard } from "@/components/AuthGuard";
+import { ToastProvider } from "@/components/ui/toast";
+import { useApplyTheme } from "@/hooks/useTheme";
+import { useReminders } from "@/hooks/useReminders";
+import { useBackgroundReminders } from "@/hooks/useBackgroundReminders";
+import { usePomodoroEngine } from "@/hooks/usePomodoroEngine";
+import { useAuth } from "@/store/auth";
+import { useTasks } from "@/store/tasks";
+import { usePomodoro } from "@/store/pomodoro";
+import { useWater } from "@/store/water";
+import { useStretch } from "@/store/stretch";
+import { useExercise } from "@/store/exercise";
+import { useAppointments } from "@/store/appointments";
+import { useSettings } from "@/store/settings";
+import AuthPage from "@/pages/Auth";
+import Dashboard from "@/pages/Dashboard";
+import Pomodoro from "@/pages/Pomodoro";
+import Tasks from "@/pages/Tasks";
+import Water from "@/pages/Water";
+import Stretch from "@/pages/Stretch";
+import Exercise from "@/pages/Exercise";
+import Breathing from "@/pages/Breathing";
+import Bubbles from "@/pages/Bubbles";
+import Motivation from "@/pages/Motivation";
+import Vocabulary from "@/pages/Vocabulary";
+import DevBytes from "@/pages/DevBytes";
+import DiffChecker from "@/pages/DiffChecker";
+import Appointments from "@/pages/Appointments";
+import Insights from "@/pages/Insights";
+import History from "@/pages/History";
+import SettingsPage from "@/pages/Settings";
 
 function AppInner() {
-  useApplyTheme()
-  useReminders()
-  useBackgroundReminders()
-  usePomodoroEngine()
-  const syncTasks = useTasks((s) => s.syncFromDB)
-  const syncPomodoro = usePomodoro((s) => s.syncFromDB)
-  const syncWater = useWater((s) => s.syncFromDB)
-  const syncStretch = useStretch((s) => s.syncFromDB)
-  const syncAppointments = useAppointments((s) => s.syncFromDB)
-  const syncSettings = useSettings((s) => s.syncFromDB)
-  const user = useAuth((s) => s.user)
+  useApplyTheme();
+  useReminders();
+  useBackgroundReminders();
+  usePomodoroEngine();
+  const syncTasks = useTasks((s) => s.syncFromDB);
+  const syncPomodoro = usePomodoro((s) => s.syncFromDB);
+  const syncWater = useWater((s) => s.syncFromDB);
+  const syncStretch = useStretch((s) => s.syncFromDB);
+  const syncExercise = useExercise((s) => s.syncFromDB);
+  const syncAppointments = useAppointments((s) => s.syncFromDB);
+  const syncSettings = useSettings((s) => s.syncFromDB);
+  const user = useAuth((s) => s.user);
   useEffect(() => {
     if (user) {
-      syncTasks()
-      syncPomodoro()
-      syncWater()
-      syncStretch()
-      syncAppointments()
-      syncSettings()
+      syncTasks();
+      syncPomodoro();
+      syncWater();
+      syncStretch();
+      void syncExercise(user.id);
+      syncAppointments();
+      syncSettings();
     }
-  }, [user])
+  }, [user]);
   return (
     <Layout>
       <Routes>
@@ -61,6 +65,7 @@ function AppInner() {
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/water" element={<Water />} />
         <Route path="/stretch" element={<Stretch />} />
+        <Route path="/exercise" element={<Exercise />} />
         <Route path="/breathing" element={<Breathing />} />
         <Route path="/bubbles" element={<Bubbles />} />
         <Route path="/motivation" element={<Motivation />} />
@@ -74,12 +79,12 @@ function AppInner() {
         <Route path="*" element={<Dashboard />} />
       </Routes>
     </Layout>
-  )
+  );
 }
 
 export default function App() {
-  const init = useAuth((s) => s.init)
-  useEffect(() => init(), [init])
+  const init = useAuth((s) => s.init);
+  useEffect(() => init(), [init]);
 
   return (
     <ToastProvider>
@@ -95,5 +100,5 @@ export default function App() {
         />
       </Routes>
     </ToastProvider>
-  )
+  );
 }
